@@ -1,0 +1,37 @@
+{
+  "name": "musync",
+  "version": "1.0.0",
+  "description": "网易云音乐歌单同步工具 - Sync NetEase Cloud Music playlists to local",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "musync": "dist/index.js"
+  },
+  "scripts": {
+    "dev": "bun run src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target bun",
+    "test": "bun test",
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "netease",
+    "music",
+    "playlist",
+    "sync",
+    "download",
+    "cli"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@neteasecloudmusicapienhanced/api": "^4.29.18",
+    "music-metadata": "^10.6.4",
+    "commander": "^13.1.0",
+    "p-limit": "^6.2.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.7.2"
+  }
+}

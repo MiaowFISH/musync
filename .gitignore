@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+.bun/
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+
+# Logs
+*.log
+logs/
+
+# Test coverage
+coverage/
+
+# musync data (user data directory)
+.musync/
+
+# Lock files (keep bun.lockb)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
