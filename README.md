@@ -11,19 +11,51 @@
 - 🔐 **多种登录方式** - 支持手机号、邮箱、二维码登录
 - 📋 **歌单管理** - 查看和浏览您的网易云音乐歌单
 - 🔍 **本地扫描** - 扫描本地音乐库，自动识别歌曲信息
+- ⚡ **增量扫描** - 智能跳过未修改的文件，大幅提升扫描速度
 - 📊 **差异对比** - 对比在线歌单与本地音乐的差异
 - ⬇️ **智能下载** - 下载缺失歌曲，支持多种音质选择
 - ⬆️ **音质升级** - 自动检测并升级低音质歌曲
 - 🔓 **NCM解密** - 自动解密网易云音乐 .ncm 格式文件
-- 📦 **数据库管理** - 维护本地同步记录，加速后续对比
+- 📦 **数据库管理** - 维护本地同步记录，支持所有本地歌曲
 
 ## 安装
 
-### 前置要求
+### 方式一：直接使用（推荐）
+
+无需安装，直接通过 `bunx` 或 `npx` 运行：
+
+```bash
+# 使用 bunx（推荐，更快）
+bunx musync --help
+bunx musync login --qr
+bunx musync scan /path/to/music
+
+# 使用 npx
+npx musync --help
+npx musync login --qr
+npx musync scan /path/to/music
+```
+
+### 方式二：全局安装
+
+```bash
+# 使用 bun 全局安装
+bun install -g musync
+
+# 或使用 npm
+npm install -g musync
+
+# 然后直接使用
+musync --help
+```
+
+### 方式三：从源码安装
+
+#### 前置要求
 
 - [Bun](https://bun.sh) 1.x 或更高版本
 
-### 安装步骤
+#### 安装步骤
 
 ```bash
 # 克隆项目
@@ -75,11 +107,14 @@ musync playlist 705123491
 ### 4. 扫描本地音乐
 
 ```bash
-# 扫描配置的音乐目录
+# 扫描配置的音乐目录（默认增量扫描）
 musync scan
 
 # 扫描指定目录
 musync scan /path/to/music
+
+# 强制全量扫描
+musync scan --full
 ```
 
 ### 5. 对比差异
@@ -167,7 +202,22 @@ musync scan [path] [选项]
 |------|------|
 | --no-recursive | 不递归扫描子目录 |
 | --no-update-db | 不更新本地数据库 |
+| --incremental | 增量扫描，跳过未修改的文件（默认启用） |
+| --full | 强制全量扫描 |
 | --json | JSON格式输出 |
+
+**示例：**
+
+```bash
+# 增量扫描（默认，跳过未修改的文件）
+musync scan /path/to/music
+
+# 强制全量扫描
+musync scan /path/to/music --full
+
+# JSON格式输出
+musync scan /path/to/music --json
+```
 
 ### diff
 
