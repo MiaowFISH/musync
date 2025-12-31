@@ -7,7 +7,7 @@ import { join } from 'path';
 
 // Application metadata
 export const APP_NAME = 'musync';
-export const APP_VERSION = '1.0.0';
+export const APP_VERSION = '1.3.0';
 export const APP_DESCRIPTION = '网易云音乐歌单同步工具';
 
 // Default data directory
