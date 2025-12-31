@@ -81,7 +81,7 @@ export const QUALITY_CONFIG = {
 } as const;
 
 // Sync status types
-export type SyncStatus = 'synced' | 'upgraded' | 'deleted';
+export type SyncStatus = 'synced' | 'upgraded' | 'deleted' | 'pending';
 
 // QR code check status
 export const QR_CHECK_STATUS = {

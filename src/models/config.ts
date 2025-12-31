@@ -2,7 +2,7 @@
  * Configuration and sync record type definitions
  */
 
-import type { UserQuality, SyncStatus } from '../constants';
+import type { UserQuality, SyncStatus, AudioFormat } from '../constants';
 import { DEFAULT_CONFIG } from '../constants';
 
 /**
@@ -61,20 +61,32 @@ export interface QRLoginState {
  * Sync record for a track
  */
 export interface SyncRecord {
-  /** NetEase song ID */
-  songId: number;
-  /** Song name (redundant for display) */
-  name: string;
-  /** Artist name (redundant for display) */
-  artist: string;
-  /** Local file path */
+  /** Local file path (primary key) */
   localPath: string;
-  /** Synced quality */
+  /** NetEase song ID (optional, filled after matching) */
+  songId?: number;
+  /** Song name */
+  name: string;
+  /** Artist name */
+  artist: string;
+  /** Album (optional) */
+  album?: string;
+  /** Quality level */
   quality: UserQuality;
   /** Sync timestamp (ISO 8601) */
   syncedAt: string;
   /** Sync status */
   status: SyncStatus;
+  /** File modification time (ISO 8601), for incremental scanning */
+  fileModifiedAt: string;
+  /** File size in bytes, for quick comparison */
+  fileSize: number;
+  /** Audio format */
+  format: AudioFormat;
+  /** Bitrate in kbps (optional) */
+  bitrate?: number;
+  /** Information source */
+  source: 'filename' | 'metadata' | 'database';
 }
 
 /**
@@ -101,7 +113,7 @@ export function createDefaultConfig(): Config {
  */
 export function createEmptyDatabase(): Database {
   return {
-    version: 1,
+    version: 2,
     lastSync: undefined,
     tracks: []
   };

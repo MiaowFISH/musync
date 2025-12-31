@@ -6,14 +6,82 @@ import { join } from 'path';
 import { DATABASE_FILE } from '../constants';
 import type { Database, SyncRecord } from '../models/config';
 import { createEmptyDatabase } from '../models/config';
-import { readJsonFile, writeJsonFile, pathExists, ensureDirectorySync } from '../utils/file';
+import { readJsonFile, writeJsonFile, pathExists, ensureDirectorySync, getFileStats } from '../utils/file';
 import { getDataDir } from './config';
+import type { UserQuality, SyncStatus, AudioFormat } from '../constants';
+
+/**
+ * Legacy SyncRecord from database v1
+ */
+interface SyncRecordV1 {
+  songId: number;
+  name: string;
+  artist: string;
+  localPath: string;
+  quality: UserQuality;
+  syncedAt: string;
+  status: SyncStatus;
+}
+
+/**
+ * Legacy Database from v1
+ */
+interface DatabaseV1 {
+  version: number;
+  lastSync?: string;
+  tracks: SyncRecordV1[];
+}
 
 /**
  * Get database file path
  */
 function getDatabasePath(): string {
   return join(getDataDir(), DATABASE_FILE);
+}
+
+/**
+ * Determine format from file extension
+ */
+function getFormatFromPath(filePath: string): AudioFormat {
+  const ext = filePath.split('.').pop()?.toLowerCase() || '';
+  const validFormats: AudioFormat[] = ['mp3', 'flac', 'wav', 'ogg', 'm4a', 'aac', 'ncm'];
+  return validFormats.includes(ext as AudioFormat) ? (ext as AudioFormat) : 'other';
+}
+
+/**
+ * Migrate database from v1 to v2
+ * Changes:
+ * - localPath becomes primary key
+ * - songId becomes optional
+ * - Added fileModifiedAt, fileSize, format, source fields
+ */
+function migrateV1ToV2(db: DatabaseV1): Database {
+  const newTracks: SyncRecord[] = [];
+  
+  for (const track of db.tracks) {
+    const stats = getFileStats(track.localPath);
+    const format = getFormatFromPath(track.localPath);
+    
+    newTracks.push({
+      localPath: track.localPath,
+      songId: track.songId,
+      name: track.name,
+      artist: track.artist,
+      quality: track.quality,
+      syncedAt: track.syncedAt,
+      status: stats ? track.status : 'deleted',
+      fileModifiedAt: stats?.mtime ?? track.syncedAt,
+      fileSize: stats?.size ?? 0,
+      format,
+      source: 'database'
+    });
+  }
+  
+  return {
+    version: 2,
+    lastSync: db.lastSync,
+    tracks: newTracks
+  };
 }
 
 /**
@@ -29,12 +97,20 @@ export async function loadDatabase(): Promise<Database> {
     return createEmptyDatabase();
   }
   
-  const db = await readJsonFile<Database>(dbPath);
+  const db = await readJsonFile<Database | DatabaseV1>(dbPath);
   if (!db) {
     return createEmptyDatabase();
   }
   
-  return db;
+  // Check if migration is needed
+  if (db.version === 1 || db.version === undefined) {
+    const migratedDb = migrateV1ToV2(db as DatabaseV1);
+    // Save migrated database
+    await writeJsonFile(dbPath, migratedDb);
+    return migratedDb;
+  }
+  
+  return db as Database;
 }
 
 /**
@@ -71,11 +147,11 @@ export async function getRecordByPath(localPath: string): Promise<SyncRecord | u
 }
 
 /**
- * Add or update sync record
+ * Add or update sync record (using localPath as primary key)
  */
 export async function upsertRecord(record: SyncRecord): Promise<void> {
   const db = await loadDatabase();
-  const existingIndex = db.tracks.findIndex(t => t.songId === record.songId);
+  const existingIndex = db.tracks.findIndex(t => t.localPath === record.localPath);
   
   if (existingIndex >= 0) {
     db.tracks[existingIndex] = record;
@@ -88,13 +164,13 @@ export async function upsertRecord(record: SyncRecord): Promise<void> {
 }
 
 /**
- * Add multiple sync records
+ * Add multiple sync records (using localPath as primary key)
  */
 export async function upsertRecords(records: SyncRecord[]): Promise<void> {
   const db = await loadDatabase();
   
   for (const record of records) {
-    const existingIndex = db.tracks.findIndex(t => t.songId === record.songId);
+    const existingIndex = db.tracks.findIndex(t => t.localPath === record.localPath);
     
     if (existingIndex >= 0) {
       db.tracks[existingIndex] = record;
@@ -105,6 +181,42 @@ export async function upsertRecords(records: SyncRecord[]): Promise<void> {
   
   db.lastSync = new Date().toISOString();
   await saveDatabase(db);
+}
+
+/**
+ * Update songId for a record (for matching local songs with online songs)
+ */
+export async function updateSongId(localPath: string, songId: number): Promise<boolean> {
+  const db = await loadDatabase();
+  const record = db.tracks.find(t => t.localPath === localPath);
+  
+  if (record) {
+    record.songId = songId;
+    // When songId is matched, update status from pending to synced
+    if (record.status === 'pending') {
+      record.status = 'synced';
+    }
+    record.syncedAt = new Date().toISOString();
+    await saveDatabase(db);
+    return true;
+  }
+  
+  return false;
+}
+
+/**
+ * Get records by status
+ */
+export async function getRecordsByStatus(status: SyncStatus): Promise<SyncRecord[]> {
+  const db = await loadDatabase();
+  return db.tracks.filter(t => t.status === status);
+}
+
+/**
+ * Get pending records (local songs without songId)
+ */
+export async function getPendingRecords(): Promise<SyncRecord[]> {
+  return getRecordsByStatus('pending');
 }
 
 /**

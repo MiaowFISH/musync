@@ -28,6 +28,8 @@ export interface LocalTrack {
   songId?: number;
   /** Information source */
   source: 'filename' | 'metadata' | 'database';
+  /** File modification time (ISO 8601) */
+  fileModifiedAt: string;
 }
 
 /**
@@ -44,6 +46,14 @@ export interface ScanResult {
   formatDistribution: Record<string, number>;
   /** Scan duration in ms */
   scanDurationMs: number;
+  /** Number of new files (incremental scan) */
+  newFiles: number;
+  /** Number of skipped files (incremental scan - unchanged files) */
+  skippedFiles: number;
+  /** Number of updated files (incremental scan - changed files) */
+  updatedFiles: number;
+  /** Number of deleted files (files in database but not on disk) */
+  deletedFiles: number;
 }
 
 /**
@@ -78,6 +88,7 @@ export function createLocalTrack(data: {
   bitrate?: number;
   songId?: number;
   source: 'filename' | 'metadata' | 'database';
+  fileModifiedAt: string;
 }): LocalTrack {
   return {
     ...data,
@@ -94,7 +105,11 @@ export function createEmptyScanResult(): ScanResult {
     tracks: [],
     failedFiles: [],
     formatDistribution: {},
-    scanDurationMs: 0
+    scanDurationMs: 0,
+    newFiles: 0,
+    skippedFiles: 0,
+    updatedFiles: 0,
+    deletedFiles: 0
   };
 }
 

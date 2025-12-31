@@ -3,14 +3,16 @@
  * Scans directories for audio files and extracts metadata
  */
 
-import * as mm from 'music-metadata';
+import { parseFile} from 'music-metadata';
 import { basename, extname } from 'path';
 import {
   findAudioFiles,
   getFileSize,
   getAudioFormat,
   pathExists,
-  isDirectory
+  isDirectory,
+  getFileMtime,
+  getFileStats
 } from '../utils/file';
 import type { LocalTrack, ScanResult } from '../models/local-track';
 import { createLocalTrack, createEmptyScanResult } from '../models/local-track';
@@ -18,7 +20,7 @@ import type { AudioFormat } from '../constants';
 import { FILENAME_PATTERNS } from '../constants';
 import { logger } from '../utils/logger';
 import { decryptNcmFile, extractNcmMetadata } from './ncm';
-import { readFileSync } from 'fs';
+import type { SyncRecord } from '../models/config';
 
 /**
  * Parse song info from filename
@@ -58,8 +60,7 @@ export async function readAudioMetadata(filePath: string): Promise<{
   duration?: number;
 } | null> {
   try {
-    const buf = readFileSync(filePath);
-    const metadata = await mm.parseBuffer(buf);
+    const metadata = await parseFile(filePath, { duration: false, skipCovers: true, skipPostHeaders: true });
     
     return {
       title: metadata.common.title,
@@ -72,6 +73,31 @@ export async function readAudioMetadata(filePath: string): Promise<{
     logger.debug(`Failed to read metadata for ${filePath}: ${err}`);
     return null;
   }
+}
+
+/**
+ * Check if a file has changed since it was last recorded
+ * Compares mtime and size for quick change detection
+ */
+export function hasFileChanged(filePath: string, existingRecord: SyncRecord): boolean {
+  const stats = getFileStats(filePath);
+  
+  if (!stats) {
+    // File doesn't exist anymore
+    return true;
+  }
+  
+  // Compare mtime (primary check)
+  if (stats.mtime !== existingRecord.fileModifiedAt) {
+    return true;
+  }
+  
+  // Compare size as a sanity check
+  if (stats.size !== existingRecord.fileSize) {
+    return true;
+  }
+  
+  return false;
 }
 
 /**
@@ -93,6 +119,7 @@ export async function scanAudioFile(filePath: string, decryptNcm = true): Promis
     if (ncmMeta) {
       // Return track info from NCM metadata without decrypting
       const fileSize = getFileSize(filePath);
+      const fileMtime = getFileMtime(filePath) ?? new Date().toISOString();
       const artists = ncmMeta.artist.map(a => a[0]).join(', ');
       
       return createLocalTrack({
@@ -104,7 +131,8 @@ export async function scanAudioFile(filePath: string, decryptNcm = true): Promis
         fileSize,
         bitrate: Math.round(ncmMeta.bitrate / 1000),
         songId: ncmMeta.musicId,
-        source: 'metadata'
+        source: 'metadata',
+        fileModifiedAt: fileMtime
       });
     }
     
@@ -116,6 +144,7 @@ export async function scanAudioFile(filePath: string, decryptNcm = true): Promis
       
       if (decryptResult.metadata) {
         const fileSize = getFileSize(actualPath);
+        const fileMtime = getFileMtime(actualPath) ?? new Date().toISOString();
         const artists = decryptResult.metadata.artist.map(a => a[0]).join(', ');
         
         return createLocalTrack({
@@ -127,13 +156,15 @@ export async function scanAudioFile(filePath: string, decryptNcm = true): Promis
           fileSize,
           bitrate: Math.round(decryptResult.metadata.bitrate / 1000),
           songId: decryptResult.metadata.musicId,
-          source: 'metadata'
+          source: 'metadata',
+          fileModifiedAt: fileMtime
         });
       }
     }
   }
   
   const fileSize = getFileSize(actualPath);
+  const fileMtime = getFileMtime(actualPath) ?? new Date().toISOString();
   
   // Try to read metadata first
   const metadata = await readAudioMetadata(filePath);
@@ -171,7 +202,8 @@ export async function scanAudioFile(filePath: string, decryptNcm = true): Promis
     format,
     fileSize,
     bitrate,
-    source
+    source,
+    fileModifiedAt: fileMtime
   });
 }
 
@@ -180,9 +212,14 @@ export async function scanAudioFile(filePath: string, decryptNcm = true): Promis
  */
 export async function scanDirectory(
   dir: string,
-  options: { recursive?: boolean; onProgress?: (current: number, total: number, file: string) => void } = {}
+  options: {
+    recursive?: boolean;
+    incremental?: boolean;
+    existingRecords?: SyncRecord[];
+    onProgress?: (current: number, total: number, file: string) => void;
+  } = {}
 ): Promise<ScanResult> {
-  const { recursive = true, onProgress } = options;
+  const { recursive = true, incremental = false, existingRecords = [], onProgress } = options;
   const startTime = Date.now();
   
   if (!pathExists(dir)) {
@@ -201,7 +238,7 @@ export async function scanDirectory(
     };
   }
   
-  logger.debug(`Scanning directory: ${dir}`);
+  logger.debug(`Scanning directory: ${dir} (incremental: ${incremental})`);
   
   // Find all audio files
   const files = findAudioFiles(dir, recursive);
@@ -209,9 +246,22 @@ export async function scanDirectory(
   
   logger.debug(`Found ${totalFiles} audio files`);
   
+  // Build index for incremental scanning
+  const recordsByPath = new Map(
+    existingRecords.map(r => [r.localPath, r])
+  );
+  
+  // Track files in current scan to detect deletions
+  const currentFilePaths = new Set(files);
+  
   const tracks: LocalTrack[] = [];
   const failedFiles: string[] = [];
   const formatDistribution: Record<string, number> = {};
+  
+  // Incremental scan statistics
+  let newFiles = 0;
+  let skippedFiles = 0;
+  let updatedFiles = 0;
   
   // Process files
   for (let i = 0; i < files.length; i++) {
@@ -224,6 +274,24 @@ export async function scanDirectory(
     // Track format distribution
     const ext = extname(file).slice(1).toLowerCase();
     formatDistribution[ext] = (formatDistribution[ext] ?? 0) + 1;
+    
+    // Incremental mode: check if file has changed
+    if (incremental) {
+      const existingRecord = recordsByPath.get(file);
+      
+      if (existingRecord && !hasFileChanged(file, existingRecord)) {
+        // File hasn't changed, skip parsing
+        skippedFiles++;
+        continue;
+      }
+      
+      // Track if this is a new file or an update
+      if (existingRecord) {
+        updatedFiles++;
+      } else {
+        newFiles++;
+      }
+    }
     
     try {
       const track = await scanAudioFile(file);
@@ -239,12 +307,37 @@ export async function scanDirectory(
     }
   }
   
+  // Count deleted files (files in database but no longer on disk)
+  let deletedFiles = 0;
+  for (const record of existingRecords) {
+    if (!currentFilePaths.has(record.localPath) && record.status !== 'deleted') {
+      deletedFiles++;
+    }
+  }
+  
+  const scanDurationMs = Date.now() - startTime;
+  
+  // Log performance metrics
+  logger.debug(`Scan completed in ${scanDurationMs}ms`);
+  logger.debug(`Total files: ${totalFiles}, Parsed: ${tracks.length}, Failed: ${failedFiles.length}`);
+  if (incremental) {
+    logger.debug(`Incremental stats: new=${newFiles}, skipped=${skippedFiles}, updated=${updatedFiles}, deleted=${deletedFiles}`);
+  }
+  if (tracks.length > 0) {
+    const avgTimePerFile = scanDurationMs / tracks.length;
+    logger.debug(`Average time per parsed file: ${avgTimePerFile.toFixed(2)}ms`);
+  }
+  
   return {
     totalFiles,
     tracks,
     failedFiles,
     formatDistribution,
-    scanDurationMs: Date.now() - startTime
+    scanDurationMs,
+    newFiles: incremental ? newFiles : totalFiles,
+    skippedFiles: incremental ? skippedFiles : 0,
+    updatedFiles: incremental ? updatedFiles : 0,
+    deletedFiles: incremental ? deletedFiles : 0
   };
 }
 

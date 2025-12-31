@@ -48,6 +48,32 @@ export function getFileSize(path: string): number {
 }
 
 /**
+ * Get file modification time as ISO 8601 string
+ */
+export function getFileMtime(path: string): string | null {
+  try {
+    return statSync(path).mtime.toISOString();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Get file stats (size and mtime)
+ */
+export function getFileStats(path: string): { size: number; mtime: string } | null {
+  try {
+    const stats = statSync(path);
+    return {
+      size: stats.size,
+      mtime: stats.mtime.toISOString()
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Get file extension (lowercase, without dot)
  */
 export function getExtension(path: string): string {
