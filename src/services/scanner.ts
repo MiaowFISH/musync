@@ -3,7 +3,7 @@
  * Scans directories for audio files and extracts metadata
  */
 
-import * as mm from 'music-metadata';
+import { parseFile} from 'music-metadata';
 import { basename, extname } from 'path';
 import {
   findAudioFiles,
@@ -58,8 +58,7 @@ export async function readAudioMetadata(filePath: string): Promise<{
   duration?: number;
 } | null> {
   try {
-    const buf = readFileSync(filePath);
-    const metadata = await mm.parseBuffer(buf);
+    const metadata = await parseFile(filePath, { duration: false, skipCovers: true, skipPostHeaders: true });
     
     return {
       title: metadata.common.title,
