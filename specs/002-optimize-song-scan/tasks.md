@@ -19,7 +19,7 @@
 
 **Purpose**: Preparation for feature implementation
 
-- [ ] T001 Verify current music-metadata version supports parseFile in package.json
+- [X] T001 Verify current music-metadata version supports parseFile in package.json
 
 ---
 
@@ -29,12 +29,12 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T002 Update SyncStatus type to include 'pending' status in src/constants.ts
-- [ ] T003 Update SyncRecord interface with new fields in src/models/config.ts
-- [ ] T004 Update LocalTrack interface with fileModifiedAt field in src/models/local-track.ts
-- [ ] T005 [P] Add getFileMtime utility function in src/utils/file.ts
-- [ ] T006 Implement database migration v1 to v2 in src/storage/database.ts
-- [ ] T007 Update createEmptyDatabase to return version 2 in src/models/config.ts
+- [X] T002 Update SyncStatus type to include 'pending' status in src/constants.ts
+- [X] T003 Update SyncRecord interface with new fields in src/models/config.ts
+- [X] T004 Update LocalTrack interface with fileModifiedAt field in src/models/local-track.ts
+- [X] T005 [P] Add getFileMtime utility function in src/utils/file.ts
+- [X] T006 Implement database migration v1 to v2 in src/storage/database.ts
+- [X] T007 Update createEmptyDatabase to return version 2 in src/models/config.ts
 
 **Checkpoint**: Foundation ready - user story implementation can now begin
 
@@ -48,10 +48,10 @@
 
 ### Implementation for User Story 1
 
-- [ ] T008 [US1] Replace readFileSync+parseBuffer with parseFile in src/services/scanner.ts readAudioMetadata function
-- [ ] T009 [US1] Add parseFile options (skipCovers, duration:false) in src/services/scanner.ts
-- [ ] T010 [US1] Update scanAudioFile to include fileModifiedAt in returned LocalTrack in src/services/scanner.ts
-- [ ] T011 [US1] Update scanDirectory to populate fileSize from file stats in src/services/scanner.ts
+- [X] T008 [US1] Replace readFileSync+parseBuffer with parseFile in src/services/scanner.ts readAudioMetadata function
+- [X] T009 [US1] Add parseFile options (skipCovers, duration:false) in src/services/scanner.ts
+- [X] T010 [US1] Update scanAudioFile to include fileModifiedAt in returned LocalTrack in src/services/scanner.ts
+- [X] T011 [US1] Update scanDirectory to populate fileSize from file stats in src/services/scanner.ts
 
 **Checkpoint**: User Story 1 complete - scanning should be significantly faster with lower memory usage
 
@@ -65,14 +65,14 @@
 
 ### Implementation for User Story 2
 
-- [ ] T012 [US2] Modify upsertRecord to use localPath as primary key in src/storage/database.ts
-- [ ] T013 [US2] Modify upsertRecords to use localPath as primary key in src/storage/database.ts
-- [ ] T014 [P] [US2] Implement updateSongId function in src/storage/database.ts
-- [ ] T015 [P] [US2] Implement getRecordsByStatus function in src/storage/database.ts
-- [ ] T016 [P] [US2] Implement getPendingRecords function in src/storage/database.ts
-- [ ] T017 [US2] Remove songId filter in scan command - store all tracks in src/commands/scan.ts
-- [ ] T018 [US2] Update record creation to set status='pending' for tracks without songId in src/commands/scan.ts
-- [ ] T019 [US2] Add fileModifiedAt and fileSize to record creation in src/commands/scan.ts
+- [X] T012 [US2] Modify upsertRecord to use localPath as primary key in src/storage/database.ts
+- [X] T013 [US2] Modify upsertRecords to use localPath as primary key in src/storage/database.ts
+- [X] T014 [P] [US2] Implement updateSongId function in src/storage/database.ts
+- [X] T015 [P] [US2] Implement getRecordsByStatus function in src/storage/database.ts
+- [X] T016 [P] [US2] Implement getPendingRecords function in src/storage/database.ts
+- [X] T017 [US2] Remove songId filter in scan command - store all tracks in src/commands/scan.ts
+- [X] T018 [US2] Update record creation to set status='pending' for tracks without songId in src/commands/scan.ts
+- [X] T019 [US2] Add fileModifiedAt and fileSize to record creation in src/commands/scan.ts
 
 **Checkpoint**: User Story 2 complete - all scanned songs stored regardless of songId
 
@@ -86,13 +86,13 @@
 
 ### Implementation for User Story 3
 
-- [ ] T020 [US3] Add --incremental and --full options to scan command in src/commands/scan.ts
-- [ ] T021 [US3] Implement hasFileChanged helper function in src/services/scanner.ts
-- [ ] T022 [US3] Implement incremental scan logic in scanDirectory in src/services/scanner.ts
-- [ ] T023 [US3] Update ScanResult interface with newFiles, skippedFiles, updatedFiles, deletedFiles in src/models/local-track.ts
-- [ ] T024 [US3] Update scan command to load existing records for incremental comparison in src/commands/scan.ts
-- [ ] T025 [US3] Update scan command output to show incremental scan statistics in src/commands/scan.ts
-- [ ] T026 [US3] Mark deleted files in database when file no longer exists in src/commands/scan.ts
+- [X] T020 [US3] Add --incremental and --full options to scan command in src/commands/scan.ts
+- [X] T021 [US3] Implement hasFileChanged helper function in src/services/scanner.ts
+- [X] T022 [US3] Implement incremental scan logic in scanDirectory in src/services/scanner.ts
+- [X] T023 [US3] Update ScanResult interface with newFiles, skippedFiles, updatedFiles, deletedFiles in src/models/local-track.ts
+- [X] T024 [US3] Update scan command to load existing records for incremental comparison in src/commands/scan.ts
+- [X] T025 [US3] Update scan command output to show incremental scan statistics in src/commands/scan.ts
+- [X] T026 [US3] Mark deleted files in database when file no longer exists in src/commands/scan.ts
 
 **Checkpoint**: User Story 3 complete - incremental scanning fully functional
 
@@ -102,10 +102,10 @@
 
 **Purpose**: Final improvements and validation
 
-- [ ] T027 [P] Update JSON output format to include new fields in src/commands/scan.ts
-- [ ] T028 [P] Add debug logging for scan performance metrics in src/services/scanner.ts
-- [ ] T029 Run quickstart.md validation - test full scan workflow
-- [ ] T030 Manual testing with large music library (1000+ files)
+- [X] T027 [P] Update JSON output format to include new fields in src/commands/scan.ts
+- [X] T028 [P] Add debug logging for scan performance metrics in src/services/scanner.ts
+- [X] T029 Run quickstart.md validation - test full scan workflow
+- [X] T030 Manual testing with large music library (1000+ files)
 
 ---
 

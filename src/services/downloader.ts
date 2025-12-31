@@ -23,7 +23,10 @@ import {
   getAvailableDiskSpace,
   sanitizeFileName,
   generateUniqueFileName,
-  deleteFile
+  deleteFile,
+  getFileMtime,
+  getFileSize,
+  getExtension
 } from '../utils/file';
 import { formatArtists } from '../utils/format';
 import { logger } from '../utils/logger';
@@ -252,15 +255,25 @@ export async function downloadSong(
       actualQuality = 'high';
     }
     
+    // Get file stats for the new SyncRecord
+    const downloadedFileSize = getFileSize(destPath);
+    const downloadedFileMtime = getFileMtime(destPath) ?? new Date().toISOString();
+    const downloadedFormat = getExtension(destPath);
+    
     // Save to database
     const record: SyncRecord = {
+      localPath: destPath,
       songId: song.id,
       name: song.name,
       artist: formatArtists(song.artists),
-      localPath: destPath,
       quality: actualQuality,
       syncedAt: new Date().toISOString(),
-      status: 'synced'
+      status: 'synced',
+      fileModifiedAt: downloadedFileMtime,
+      fileSize: downloadedFileSize,
+      format: downloadedFormat as 'mp3' | 'flac' | 'wav' | 'ogg' | 'm4a' | 'aac' | 'ncm' | 'other',
+      bitrate: Math.round(urlInfo.br / 1000),
+      source: 'metadata'
     };
     
     await upsertRecord(record);
@@ -396,14 +409,23 @@ export async function upgradeSong(
   
   // Update database record status
   if (result.success) {
+    // Get file stats for the new SyncRecord
+    const upgradedFileSize = getFileSize(result.localPath!);
+    const upgradedFileMtime = getFileMtime(result.localPath!) ?? new Date().toISOString();
+    const upgradedFormat = getExtension(result.localPath!);
+    
     const record: SyncRecord = {
+      localPath: result.localPath!,
       songId: song.id,
       name: song.name,
       artist: formatArtists(song.artists),
-      localPath: result.localPath!,
       quality: result.quality!,
       syncedAt: new Date().toISOString(),
-      status: 'upgraded'
+      status: 'upgraded',
+      fileModifiedAt: upgradedFileMtime,
+      fileSize: upgradedFileSize,
+      format: upgradedFormat as 'mp3' | 'flac' | 'wav' | 'ogg' | 'm4a' | 'aac' | 'ncm' | 'other',
+      source: 'metadata'
     };
     
     await upsertRecord(record);
