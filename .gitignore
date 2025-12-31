@@ -36,3 +36,8 @@ coverage/
 package-lock.json
 yarn.lock
 pnpm-lock.yaml
+
+# Spec-Kit files
+.github/agents/
+.github/prompts/
+.specify/
